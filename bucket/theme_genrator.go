@@ -10,8 +10,16 @@ type themeGenerator struct {
 	creators map[string]creator
 }
 
+func (g *themeGenerator) GetURL(datatype string, id string) (string, error) {
+	return g.creators[datatype].GetURL(id)
+}
+
 func (g *themeGenerator) Get(datatype string, id string) (io.ReadCloser, error) {
 	return g.creators[datatype].Get(id)
+}
+
+func (wpg *themeGenerator) Put(datatype string, r io.Reader) error {
+	return nil
 }
 
 func newThemeGenrator() generator {
@@ -21,6 +29,7 @@ func newThemeGenrator() generator {
 	}
 
 	tpls := map[string]string{
+		"meta":           "/theme/%s/meta.tar.gz",
 		"config":         "/theme/%s/theme.ini",
 		"thumbnail":      "/theme/%s/thumbnail.png",
 		"package":        "/theme/%s/package.tar.gz",
@@ -46,6 +55,7 @@ func newIconGenrator() generator {
 	}
 
 	tpls := map[string]string{
+		"meta":      "/subtheme/icon/%s/meta.tar.gz",
 		"config":    "/subtheme/icon/%s/theme.ini",
 		"thumbnail": "/subtheme/icon/%s/thumbnail.png",
 		"package":   "/subtheme/icon/%s/package.tar.gz",
@@ -68,6 +78,7 @@ func newWidgetGenrator() generator {
 	}
 
 	tpls := map[string]string{
+		"meta":      "/subtheme/widget/%s/meta.tar.gz",
 		"config":    "/subtheme/widget/%s/theme.ini",
 		"thumbnail": "/subtheme/widget/%s/thumbnail.png",
 		"package":   "/subtheme/widget/%s/package.tar.gz",
@@ -91,6 +102,7 @@ func newCursorGenrator() generator {
 	}
 
 	tpls := map[string]string{
+		"meta":      "/subtheme/cursor/%s/meta.tar.gz",
 		"config":    "/subtheme/cursor/%s/theme.ini",
 		"thumbnail": "/subtheme/cursor/%s/thumbnail.png",
 		"package":   "/subtheme/cursor/%s/package.tar.gz",

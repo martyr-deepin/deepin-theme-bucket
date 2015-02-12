@@ -15,6 +15,10 @@ type fontPkgCreator struct {
 	g *fontGenerator
 }
 
+func (c *fontPkgCreator) GetURL(id string) (string, error) {
+	return "", fmt.Errorf("No Such URL")
+}
+
 func (c *fontPkgCreator) Get(id string) (io.ReadCloser, error) {
 	buf := new(bytes.Buffer)
 	gw := gzip.NewWriter(buf)
@@ -91,6 +95,7 @@ func newFontGenrator() generator {
 	}
 
 	tpls := map[string]string{
+		"meta":   "/subtheme/font/%s/meta.tar.gz",
 		"config": "/subtheme/font/%s/theme.ini",
 		"data":   "/data/font/%s",
 	}
@@ -108,6 +113,14 @@ func newFontGenrator() generator {
 	return g
 }
 
+func (g *fontGenerator) GetURL(datatype string, id string) (string, error) {
+	return g.creators[datatype].GetURL(id)
+}
+
 func (g *fontGenerator) Get(datatype string, id string) (io.ReadCloser, error) {
 	return g.creators[datatype].Get(id)
+}
+
+func (wpg *fontGenerator) Put(datatype string, r io.Reader) error {
+	return nil
 }

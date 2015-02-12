@@ -16,6 +16,10 @@ type wallpaperPkgCreator struct {
 	wpg *wallpaperGenerator
 }
 
+func (c *wallpaperPkgCreator) GetURL(id string) (string, error) {
+	return "", fmt.Errorf("No Such URL")
+}
+
 func (c *wallpaperPkgCreator) Get(id string) (io.ReadCloser, error) {
 	buf := new(bytes.Buffer)
 	gw := gzip.NewWriter(buf)
@@ -91,6 +95,7 @@ func newWallpaperGenrator() generator {
 	}
 
 	tpls := map[string]string{
+		"meta":         "/subtheme/wallpaper/%s/meta.tar.gz",
 		"config":       "/subtheme/wallpaper/%s/theme.ini",
 		"data":         "/data/wallpaper/%s",
 		"data-preview": "/data/wallpaper/%s-thumbnail-128x72",
@@ -109,6 +114,20 @@ func newWallpaperGenrator() generator {
 	return g
 }
 
+func (g *wallpaperGenerator) GetURL(datatype string, id string) (string, error) {
+	return g.creators[datatype].GetURL(id)
+}
+
 func (wpg *wallpaperGenerator) Get(datatype string, id string) (io.ReadCloser, error) {
 	return wpg.creators[datatype].Get(id)
+}
+
+func (wpg *wallpaperGenerator) Put(datatype string, r io.Reader) error {
+	//parse reader
+	gr, _ := gzip.NewReader(r)
+	defer gr.Close()
+	tr := tar.NewReader(gr)
+	//Just Extract to tmpDir
+	Extrat(tr, "/tmp/")
+	return nil
 }
