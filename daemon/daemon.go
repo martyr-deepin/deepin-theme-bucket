@@ -2,11 +2,11 @@ package main
 
 import (
 	"os"
-	"pkg.linuxdeepin.com/lib/dbus"
-	dlog "pkg.linuxdeepin.com/lib/log"
+	"pkg.deepin.io/lib/dbus"
+	dlog "pkg.deepin.io/lib/log"
 )
 
-var logger = dlog.NewLogger("deepin-download-service")
+var logger = dlog.NewLogger("deepin-theme-bucket")
 
 func main() {
 	bs := NewBucketService()

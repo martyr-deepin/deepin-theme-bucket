@@ -27,7 +27,11 @@ func (b *Bucket) put(themeType string, r io.Reader) error {
 }
 
 func (b *Bucket) putFile(themeType string, filepath string) error {
-	return nil
+	file, err := os.Open(filepath)
+	if nil != err {
+		return err
+	}
+	return b.put(themeType, file)
 }
 
 func (b *Bucket) getURL(themeType string, datatype string, id string) (string, error) {

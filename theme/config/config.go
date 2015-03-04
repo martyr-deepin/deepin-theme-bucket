@@ -25,7 +25,7 @@ type Theme struct {
 	SubThemes subthemes
 }
 
-func GetThemeConfig(filepath string) (*Theme, error) {
+func ReadThemeConfigFile(filepath string) (*Theme, error) {
 	t := &Theme{}
 	return t, gkv.ReadFileInto(t, filepath)
 }
@@ -53,17 +53,26 @@ type Cursor struct {
 	Theme subthemeInfo
 }
 
-func GetWidgetConfig(filepath string) (*Widget, error) {
+type SubthemeConfig struct {
+	Theme subthemeInfo
+}
+
+func ReadSubthemeConfigFile(filepath string) (*SubthemeConfig, error) {
+	sbt := &SubthemeConfig{}
+	return sbt, gkv.ReadFileInto(sbt, filepath)
+}
+
+func ReadWidgetConfigFile(filepath string) (*Widget, error) {
 	w := &Widget{}
 	return w, gkv.ReadFileInto(w, filepath)
 }
 
-func GetIconConfig(filepath string) (*Icon, error) {
+func ReadIconConfigFile(filepath string) (*Icon, error) {
 	i := &Icon{}
 	return i, gkv.ReadFileInto(i, filepath)
 }
 
-func GetCursorConfig(filepath string) (*Cursor, error) {
+func ReadCursorConfigFile(filepath string) (*Cursor, error) {
 	c := &Cursor{}
 	return c, gkv.ReadFileInto(c, filepath)
 }

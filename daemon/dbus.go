@@ -3,8 +3,8 @@ package main
 import (
 	"../bucket"
 	"fmt"
-	"pkg.linuxdeepin.com/lib"
-	"pkg.linuxdeepin.com/lib/dbus"
+	"pkg.deepin.io/lib"
+	"pkg.deepin.io/lib/dbus"
 )
 
 const (
@@ -104,4 +104,8 @@ func (bs *BucketService) GetWallpaperFile(duuid string) (string, error) {
 
 func (bs *BucketService) GetFontFile(duuid string) (string, error) {
 	return bs.core.GetFontFile(duuid)
+}
+
+func (bs *BucketService) PutFile(themeType, filepath string) error {
+	return bs.core.PutFile(themeType, filepath)
 }

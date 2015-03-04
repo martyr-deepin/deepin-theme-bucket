@@ -63,3 +63,7 @@ func (b *Bucket) GetWallpaperFile(duuid string) (string, error) {
 func (b *Bucket) GetFontFile(duuid string) (string, error) {
 	return b.getFile("font", "data", duuid)
 }
+
+func (b *Bucket) PutFile(themeType string, filepath string) error {
+	return b.putFile(themeType, filepath)
+}

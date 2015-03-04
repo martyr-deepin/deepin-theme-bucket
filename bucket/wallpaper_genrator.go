@@ -1,7 +1,6 @@
 package bucket
 
 import (
-	"../theme/config"
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
@@ -9,7 +8,11 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"pkg.deepin.io/lib/graphic"
 	"strings"
+
+	"../theme/config"
 )
 
 type wallpaperPkgCreator struct {
@@ -82,6 +85,10 @@ func (c *wallpaperPkgCreator) Get(id string) (io.ReadCloser, error) {
 	return ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
 }
 
+func (c *wallpaperPkgCreator) Put(id string, r io.Reader) error {
+	return upform.SlicePostData(r, (id))
+}
+
 type wallpaperGenerator struct {
 	client   *http.Client
 	Type     string
@@ -98,7 +105,7 @@ func newWallpaperGenrator() generator {
 		"meta":         "/subtheme/wallpaper/%s/meta.tar.gz",
 		"config":       "/subtheme/wallpaper/%s/theme.ini",
 		"data":         "/data/wallpaper/%s",
-		"data-preview": "/data/wallpaper/%s-thumbnail-128x72",
+		"data-preview": "/data/wallpaper/%s-thumbnail",
 	}
 
 	for k, v := range tpls {
@@ -128,6 +135,76 @@ func (wpg *wallpaperGenerator) Put(datatype string, r io.Reader) error {
 	defer gr.Close()
 	tr := tar.NewReader(gr)
 	//Just Extract to tmpDir
-	Extrat(tr, "/tmp/")
+	tmpPath := randTmpPath()
+	if err := Extrat(tr, tmpPath); nil != err {
+		return err
+	}
+	return wpg.putDir(tmpPath)
+}
+
+func (wpg *wallpaperGenerator) putDir(rootPath string) error {
+	//Put the theme.ini
+	configPath := rootPath + "/Wallpaper/.meta/theme.ini"
+	configFile, err := os.Open(configPath)
+	if nil != err {
+		return err
+	}
+	defer configFile.Close()
+
+	cfgBody, err := ioutil.ReadAll(configFile)
+	if nil != err {
+		return err
+	}
+
+	wp, err := config.ReadWallpaperConfigString(string(cfgBody))
+	if nil != err {
+		return err
+	}
+
+	//Put the config file
+	if err := wpg.creators["config"].Put(wp.Theme.Id, bytes.NewReader(cfgBody)); nil != err {
+		return err
+	}
+
+	for _, v := range strings.Split(wp.Extension.Ids, ";") {
+		if 0 == len(v) {
+			continue
+		}
+		wpdataPath := rootPath + "/Wallpaper/" + fmt.Sprint(wp.Get(v, "Name"))
+		wpdata, err := os.Open(wpdataPath)
+		if nil != err {
+			return err
+		}
+		defer wpdata.Close()
+
+		err = wpg.creators["data"].Put(v, wpdata)
+		if nil != err {
+			return err
+		}
+		//create thunbnial
+		thumbnialPath := wpdataPath + "thumbnial"
+		if err := graphic.ThumbnailImage(wpdataPath, thumbnialPath, 128, 72, graphic.FormatPng); nil != err {
+			return err
+		}
+		thb, err := os.Open(thumbnialPath)
+		if nil != err {
+			return err
+		}
+		defer thb.Close()
+		err = wpg.creators["data-preview"].Put(v, thb)
+		if nil != err {
+			return err
+		}
+	}
+
+	//updata .meta file
+	buf, err := Package("Wallpaper/.meta/", rootPath+"/Wallpaper/.meta/")
+	if nil != err {
+		return err
+	}
+	if err := wpg.creators["meta"].Put(wp.Theme.Id, bytes.NewReader(buf.Bytes())); nil != err {
+		return err
+	}
+
 	return nil
 }

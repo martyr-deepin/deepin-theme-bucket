@@ -4,7 +4,7 @@ import (
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"net/http"
-	"pkg.linuxdeepin.com/lib/utils"
+	"pkg.deepin.io/lib/utils"
 	"testing"
 )
 
@@ -100,7 +100,7 @@ func TestGetFile(t *testing.T) {
 			url, err = b.GetWallpaperPackageFile(id)
 			So(err, ShouldBeNil)
 			md5, _ = utils.SumFileMd5(url)
-			So(md5, ShouldEqual, "545d506784130f7c28b4058a47d75afe")
+			So(md5, ShouldEqual, "2038f92c14e9f2f54f8a89c2dd50d01c")
 		})
 
 		Convey("Test Font Get", func() {

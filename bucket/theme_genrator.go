@@ -1,13 +1,22 @@
 package bucket
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
+
+	"../theme/config"
 )
 
 type themeGenerator struct {
-	client   *http.Client
-	creators map[string]creator
+	client       *http.Client
+	creators     map[string]creator
+	subthemeType string
 }
 
 func (g *themeGenerator) GetURL(datatype string, id string) (string, error) {
@@ -16,10 +25,6 @@ func (g *themeGenerator) GetURL(datatype string, id string) (string, error) {
 
 func (g *themeGenerator) Get(datatype string, id string) (io.ReadCloser, error) {
 	return g.creators[datatype].Get(id)
-}
-
-func (wpg *themeGenerator) Put(datatype string, r io.Reader) error {
-	return nil
 }
 
 func newThemeGenrator() generator {
@@ -48,72 +53,79 @@ func newThemeGenrator() generator {
 	return g
 }
 
-func newIconGenrator() generator {
-	g := &themeGenerator{
-		client:   &http.Client{},
-		creators: map[string]creator{},
+func (tg *themeGenerator) Put(datatype string, r io.Reader) error {
+	//parse reader
+	gr, _ := gzip.NewReader(r)
+	defer gr.Close()
+	tr := tar.NewReader(gr)
+	//Just Extract to tmpDir
+	tmpPath := randTmpPath()
+	if err := Extrat(tr, tmpPath); nil != err {
+		return err
 	}
-
-	tpls := map[string]string{
-		"meta":      "/subtheme/icon/%s/meta.tar.gz",
-		"config":    "/subtheme/icon/%s/theme.ini",
-		"thumbnail": "/subtheme/icon/%s/thumbnail.png",
-		"package":   "/subtheme/icon/%s/package.tar.gz",
-	}
-
-	for k, v := range tpls {
-		g.creators[k] = &urlCreator{
-			client:      g.client,
-			urlTemplate: v,
-		}
-	}
-
-	return g
+	return tg.putDir(tmpPath)
 }
 
-func newWidgetGenrator() generator {
-	g := &themeGenerator{
-		client:   &http.Client{},
-		creators: map[string]creator{},
+func (tg *themeGenerator) putDir(rootPath string) error {
+	files, _ := ioutil.ReadDir(rootPath)
+	if 1 != len(files) {
+		return fmt.Errorf("Package Struct Error, Must One Dir at root.")
+	}
+	themeName := files[0].Name()
+	themeRoot := rootPath + "/" + themeName
+
+	//put config file
+	cfgPath := themeRoot + "/theme.ini"
+	cfg, err := config.ReadThemeConfigFile(cfgPath)
+	if nil != err {
+		return err
 	}
 
-	tpls := map[string]string{
-		"meta":      "/subtheme/widget/%s/meta.tar.gz",
-		"config":    "/subtheme/widget/%s/theme.ini",
-		"thumbnail": "/subtheme/widget/%s/thumbnail.png",
-		"package":   "/subtheme/widget/%s/package.tar.gz",
+	filelist := map[string]string{
+		"config":         cfgPath,
+		"thumbnail":      themeRoot + "/thumbnail.png",
+		"cursor-preview": themeRoot + "/Preview/cursor.png",
+		"icon-preview":   themeRoot + "/Preview/icon.png",
+		"widget-preview": themeRoot + "/Preview/widget.png",
+	}
+	if err := putFileList(cfg.Theme.Id, filelist, &tg.creators); nil != err {
+		return err
 	}
 
-	for k, v := range tpls {
-		g.creators[k] = &urlCreator{
-			client:      g.client,
-			urlTemplate: v,
+	//put subtheme
+	genlist := []generator{newWallpaperGenrator(), newFontGenrator(), newCursorGenrator(), newWidgetGenrator(), newIconGenrator()}
+	for _, g := range genlist {
+		if err := g.putDir(themeRoot); nil != err {
+			return err
 		}
-
 	}
 
-	return g
+	//put metafile
+	sublist := []string{"Wallpaper", "Font", "Icon", "Widget", "Cursor"}
+	for _, s := range sublist {
+		os.RemoveAll(themeRoot + "/" + s)
+	}
+
+	buf, err := Package("", rootPath)
+	if nil != err {
+		return err
+	}
+	if err := tg.creators["meta"].Put(cfg.Theme.Id, bytes.NewReader(buf.Bytes())); nil != err {
+		return err
+	}
+	return nil
 }
 
-func newCursorGenrator() generator {
-	g := &themeGenerator{
-		client:   &http.Client{},
-		creators: map[string]creator{},
-	}
-
-	tpls := map[string]string{
-		"meta":      "/subtheme/cursor/%s/meta.tar.gz",
-		"config":    "/subtheme/cursor/%s/theme.ini",
-		"thumbnail": "/subtheme/cursor/%s/thumbnail.png",
-		"package":   "/subtheme/cursor/%s/package.tar.gz",
-	}
-
-	for k, v := range tpls {
-		g.creators[k] = &urlCreator{
-			client:      g.client,
-			urlTemplate: v,
+func putFileList(id string, filelist map[string]string, creators *map[string]creator) error {
+	for k, v := range filelist {
+		f, err := os.Open(v)
+		if nil != err {
+			return err
+		}
+		defer f.Close()
+		if err := (*creators)[k].Put(id, f); nil != err {
+			return err
 		}
 	}
-
-	return g
+	return nil
 }
