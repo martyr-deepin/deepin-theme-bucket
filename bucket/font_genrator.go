@@ -9,6 +9,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 )
 
 type fontPkgCreator struct {
@@ -83,6 +85,10 @@ func (c *fontPkgCreator) Get(id string) (io.ReadCloser, error) {
 	return ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
 }
 
+func (c *fontPkgCreator) Put(id string, r io.Reader) error {
+	return upform.SlicePostData(r, (id))
+}
+
 type fontGenerator struct {
 	client   *http.Client
 	creators map[string]creator
@@ -122,5 +128,69 @@ func (g *fontGenerator) Get(datatype string, id string) (io.ReadCloser, error) {
 }
 
 func (wpg *fontGenerator) Put(datatype string, r io.Reader) error {
+	//parse reader
+	gr, _ := gzip.NewReader(r)
+	defer gr.Close()
+	tr := tar.NewReader(gr)
+	//Just Extract to tmpDir
+	tmpPath := randTmpPath()
+	if err := Extrat(tr, tmpPath); nil != err {
+		return err
+	}
+	return wpg.putDir(tmpPath)
+}
+
+func (wpg *fontGenerator) putDir(rootPath string) error {
+	//Put the theme.ini
+	configPath := rootPath + "/Font/.meta/theme.ini"
+	configFile, err := os.Open(configPath)
+	if nil != err {
+		return err
+	}
+	defer configFile.Close()
+
+	cfgBody, err := ioutil.ReadAll(configFile)
+	if nil != err {
+		return err
+	}
+
+	ft, err := config.ReadFontConfigString(string(cfgBody))
+	if nil != err {
+		return err
+	}
+
+	//Put config file
+	if err := wpg.creators["config"].Put(ft.Theme.Id, bytes.NewReader(cfgBody)); nil != err {
+		return err
+	}
+
+	fonts := fmt.Sprint(ft.Get("Standard", "Files")) + fmt.Sprint(ft.Get("Monospace", "Files"))
+	for _, v := range strings.Split(fonts, ";") {
+
+		if 0 == len(v) {
+			continue
+		}
+		dataPath := rootPath + "/Font/" + v
+		data, err := os.Open(dataPath)
+		if nil != err {
+			return err
+		}
+		defer data.Close()
+
+		err = wpg.creators["data"].Put(v, data)
+		if nil != err {
+			return err
+		}
+	}
+
+	//updata .meta file
+	buf, err := Package("Font/.meta/", rootPath+"/Font/.meta/")
+	if nil != err {
+		return err
+	}
+	if err := wpg.creators["meta"].Put(ft.Theme.Id, bytes.NewReader(buf.Bytes())); nil != err {
+		return err
+	}
+
 	return nil
 }

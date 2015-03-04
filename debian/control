@@ -5,7 +5,8 @@ Maintainer: 宋文武 <songwenwu@linuxdeepin.com>
 Build-Depends: debhelper (>= 9), golang-go,
                golang-dlib-dev,
                golang-gkv-dev,
-               golang-goconvey-dev
+               golang-goconvey-dev,
+               golang-upyun-dev
 Standards-Version: 3.9.5
 
 Package: deepin-theme-bucket
