@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=com.deepin.theme.bucket.service
+Exec=/usr/lib/deepin-daemon/deepin-theme-bucket-service
+User=root
